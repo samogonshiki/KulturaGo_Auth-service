@@ -111,5 +111,14 @@ make dev
 open http://localhost:8080/swagger/index.html
 ```
 
+### migrations
+
+```shell
+docker exec -i kulturago_auth-service-postgres-1 psql \
+      -U root \
+      -d postgres \
+      < ./db/migrations/0001_init.up.sql
+```
+
 ## Redactor:
 - **Finnik**
