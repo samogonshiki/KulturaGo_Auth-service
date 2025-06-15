@@ -86,7 +86,7 @@ services:
       MS_ACCOUNTS_PASSWORD: ${MS_ACCOUNTS_PASSWORD}
     volumes:
        - ./postgres-data:/var/lib/postgresql/data
-       - ./docker/create-postgres-databases.sql:/docker-entrypoint-initdb.d/01-init.sql
+       - ./docker/create-postgres-databases.sh:/docker-entrypoint-initdb.d/00-init.sh
     ports:
       - ${PG_PORT}:5432
     healthcheck:
