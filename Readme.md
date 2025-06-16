@@ -50,25 +50,27 @@ KulturaGo_Auth-service/
 
 ```mermaid
 graph TD
-  subgraph Edge (infra)
-    Nginx -.-> API_GW[API‑Gateway]
+  subgraph Edge_infra
+    Nginx -.-> API_GW[API-Gateway]
   end
-  API_GW -->|REST| Auth(Auth‑service)
+  API_GW -->|REST| Auth[Auth-service]
   Auth -->|Kafka events| Kafka[(Kafka)]
   Auth -->|PostgreSQL| PG[(DB auth)]
-  Auth -->|Redis black‑list| Redis
+  Auth -->|Redis black-list| Redis
 ```
 
 ### REST‑API
 
 
-```mermaid
-| POST /api/v1/auth/signup | регистрация по e‑mail/паролю |
-| POST /api/v1/auth/signin | логин, JSON → access_token |
-| GET  /api/v1/auth/oauth/vk/login | OAuth redirect |
-| GET  /api/v1/auth/oauth/vk/callback | JWT | refresh |
-| GET  /api/v1/me (JWT) | профиль (демо) |
-```
+
+| HTTP Method | Endpoint                             | Description                            |
+| ----------- | ------------------------------------ | -------------------------------------- |
+| POST        | `/api/v1/auth/signup`               | регистрация по e-mail/паролю           |
+| POST        | `/api/v1/auth/signin`               | логин, JSON → access_token             |
+| GET         | `/api/v1/auth/oauth/vk/login`       | OAuth redirect                         |
+| GET         | `/api/v1/auth/oauth/vk/callback`    | JWT ↔ refresh                          |
+| GET         | `/api/v1/me` (requires JWT)         | профиль (демо)                         |
+
 
 
 ### Поток «Social Login»
