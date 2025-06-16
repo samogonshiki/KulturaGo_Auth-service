@@ -38,7 +38,7 @@ func verify(pwd string, h []byte) bool {
 	return string(h[16:]) == string(argon2.IDKey([]byte(pwd), s, 1, 64*1024, 4, 32))
 }
 
-func (s *Service) SignUp(ctx context.Context, email, pwd string) (*domain.User, error) {
+func (s *Service) SignUp(ctx context.Context, email, pwd, password string) (*domain.User, error) {
 	if _, err := s.repo.ByEmail(ctx, email); err == nil {
 		return nil, ErrExists
 	}
