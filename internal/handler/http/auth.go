@@ -14,6 +14,15 @@ type AuthHandler struct {
 	mgr *tokens.Manager
 }
 
+type signUpReq struct {
+	Nickname string `json:"nickname"`
+	Email    string `json:"email"`
+	Password string `json:"password"`
+}
+type signUpResp struct {
+	UserID int64 `json:"user_id"`
+}
+
 func NewAuthHandler(s *service.Service, m *tokens.Manager) *AuthHandler { return &AuthHandler{s, m} }
 
 // SignUp godoc
@@ -27,17 +36,25 @@ func NewAuthHandler(s *service.Service, m *tokens.Manager) *AuthHandler { return
 // @Failure      409 {string} string              "already exists"
 // @Router       /auth/signup [post]
 func (h *AuthHandler) SignUp(w http.ResponseWriter, r *http.Request) {
-	var in struct{ Email, Password string }
+	var in signUpReq
 	if json.NewDecoder(r.Body).Decode(&in) != nil {
 		http.Error(w, "bad json", 400)
 		return
 	}
-	u, err := h.svc.SignUp(r.Context(), in.Email, in.Password)
+	if in.Nickname == "" || in.Email == "" || len(in.Password) < 6 {
+		http.Error(w, "validation failed", 422)
+		return
+	}
+	u, err := h.svc.SignUp(r.Context(),
+		in.Nickname,
+		in.Email,
+		in.Password,
+	)
 	if err != nil {
 		http.Error(w, err.Error(), 409)
 		return
 	}
-	_ = json.NewEncoder(w).Encode(map[string]any{"user_id": u.ID})
+	_ = json.NewEncoder(w).Encode(signUpResp{UserID: u.ID})
 }
 
 // SignIn godoc
