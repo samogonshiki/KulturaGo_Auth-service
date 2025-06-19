@@ -5,6 +5,7 @@ import "time"
 type User struct {
 	ID           int64
 	Email        string
+	Nickname     string
 	PasswordHash []byte
 	Provider     string
 	ProviderID   string

@@ -32,10 +32,10 @@ func (p *PG) Tx(ctx context.Context, fn func(pgx.Tx) error) error {
 }
 
 func (p *PG) Create(ctx context.Context, u *domain.User) error {
-	return p.db.QueryRow(ctx,
-		`INSERT INTO users(email,password_hash,provider,provider_id)
-		 VALUES($1,$2,$3,$4) RETURNING id`,
-		u.Email, u.PasswordHash, u.Provider, u.ProviderID,
+	return p.db.QueryRow(ctx, `
+        INSERT INTO users(email,nickname,password_hash,provider,provider_id)
+        VALUES($1,$2,$3,$4,$5) RETURNING id`,
+		u.Email, u.Nickname, u.PasswordHash, u.Provider, u.ProviderID,
 	).Scan(&u.ID)
 }
 

@@ -22,6 +22,9 @@ func NewRouter(svc *service.Service, mgr *tokens.Manager) http.Handler {
 
 		r.Post("/auth/signup", ah.SignUp)
 		r.Post("/auth/signin", ah.SignIn)
+		r.Post("/auth/refresh", ah.Refresh)
+		r.Post("/auth/logout", ah.Logout)
+		r.Get("/auth/access", ah.Access)
 
 		r.Route("/auth/oauth/{provider}", func(r chi.Router) {
 			r.Get("/login", ah.BeginOAuth)

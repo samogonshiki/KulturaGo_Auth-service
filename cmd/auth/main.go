@@ -1,6 +1,7 @@
 package main
 
 import (
+	"kulturago/auth-service/internal/logger"
 	"log"
 	"net/http"
 	"os"
@@ -12,6 +13,7 @@ import (
 
 	"kulturago/auth-service/internal/handler/routes"
 	"kulturago/auth-service/internal/kafka"
+	"kulturago/auth-service/internal/redis"
 	"kulturago/auth-service/internal/repository"
 	"kulturago/auth-service/internal/service"
 	"kulturago/auth-service/internal/tokens"
@@ -20,6 +22,9 @@ import (
 )
 
 func main() {
+	logger.Init()
+	logger.Log.Infof("auth-service starting…")
+
 	_ = godotenv.Load()
 
 	dsn := os.Getenv("DATABASE_URL")
@@ -34,11 +39,14 @@ func main() {
 		log.Fatalf("postgres: %v", err)
 	}
 
+	rdb, _ := redis.New(os.Getenv("REDIS_ADDR"))
+	rt := redis.NewRefresh(rdb.Client)
+
 	brokers := strings.Split(brokersCSV, ",")
 	kprod := kafka.New(brokers)
 
 	tokenMgr := tokens.NewManager(secret, 15*60, 30*24*60*60)
-	authSvc := service.New(pg, kprod, tokenMgr)
+	authSvc := service.New(pg, kprod, tokenMgr, rt)
 
 	base := chi.NewRouter()
 	base.Mount("/", routes.NewRouter(authSvc, tokenMgr))
