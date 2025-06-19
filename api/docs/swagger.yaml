@@ -1,0 +1,180 @@
+definitions:
+  http.accessResp:
+    properties:
+      exp:
+        type: integer
+      user_id:
+        type: integer
+    type: object
+  http.logoutReq:
+    properties:
+      refresh_token:
+        type: string
+    type: object
+  http.refreshReq:
+    properties:
+      refresh_token:
+        type: string
+    type: object
+  http.refreshResp:
+    properties:
+      access_token:
+        type: string
+      expires_in:
+        type: integer
+      refresh_token:
+        type: string
+    type: object
+  http.signInReq:
+    properties:
+      email:
+        type: string
+      password:
+        type: string
+    type: object
+  http.signUpReq:
+    properties:
+      email:
+        type: string
+      nickname:
+        type: string
+      password:
+        type: string
+    type: object
+  http.signUpResp:
+    properties:
+      user_id:
+        type: integer
+    type: object
+info:
+  contact: {}
+paths:
+  /api/v1/auth/access:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/http.accessResp'
+        "401":
+          description: invalid / revoked token
+          schema:
+            type: string
+      security:
+      - Bearer: []
+      summary: Проверка access-токена
+      tags:
+      - auth
+  /api/v1/auth/logout:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: refresh_token
+        in: body
+        name: payload
+        required: true
+        schema:
+          $ref: '#/definitions/http.logoutReq'
+      responses:
+        "204":
+          description: no content
+      summary: Logout (отзыв refresh-токена)
+      tags:
+      - auth
+  /api/v1/auth/refresh:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: refresh_token
+        in: body
+        name: payload
+        required: true
+        schema:
+          $ref: '#/definitions/http.refreshReq'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/http.refreshResp'
+        "401":
+          description: invalid / revoked token
+          schema:
+            type: string
+      summary: Обновление токенов
+      tags:
+      - auth
+  /api/v1/auth/signin:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: email, password
+        in: body
+        name: payload
+        required: true
+        schema:
+          $ref: '#/definitions/http.signInReq'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: access_token / refresh_token
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: invalid credentials
+          schema:
+            type: string
+      summary: Логин
+      tags:
+      - auth
+  /api/v1/auth/signup:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: nickname, email, password
+        in: body
+        name: payload
+        required: true
+        schema:
+          $ref: '#/definitions/http.signUpReq'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/http.signUpResp'
+        "409":
+          description: user exists
+          schema:
+            type: string
+      summary: Регистрация
+      tags:
+      - auth
+  /api/v1/me:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: integer
+            type: object
+      security:
+      - Bearer: []
+      summary: Профиль текущего пользователя
+      tags:
+      - auth
+swagger: "2.0"
