@@ -1,0 +1,29 @@
+package auth_struct
+
+type SignUpReq struct {
+	Nickname string `json:"nickname"`
+	Email    string `json:"email"`
+	Password string `json:"password"`
+}
+type SignUpResp struct {
+	UserID int64 `json:"user_id"`
+}
+
+type SignInReq struct{ Email, Password string }
+
+type RefreshReq struct {
+	Refresh string `json:"refresh_token"`
+}
+type RefreshResp struct {
+	AccessToken  string `json:"access_token"`
+	RefreshToken string `json:"refresh_token"`
+	ExpiresIn    int64  `json:"expires_in"`
+}
+
+type AccessResp struct {
+	UserID int64 `json:"user_id"`
+	Exp    int64 `json:"exp"`
+}
+type LogoutReq struct {
+	Refresh string `json:"refresh_token"`
+}
