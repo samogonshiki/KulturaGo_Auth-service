@@ -16,10 +16,7 @@ build:
 docker:
 	docker build -t $(IMAGE):latest .
 
-docker-up:
-	docker-compose up -d --build
-
-docker-down:
+dc-down:
 	docker-compose down
 
 
