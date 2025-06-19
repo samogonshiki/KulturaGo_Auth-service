@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"crypto/rand"
+	"crypto/subtle"
 	"errors"
 	"kulturago/auth-service/internal/domain"
 	"kulturago/auth-service/internal/kafka"
@@ -38,15 +39,17 @@ func hash(pwd string, s []byte) []byte {
 }
 func verify(pwd string, h []byte) bool {
 	s := h[:16]
-	return string(h[16:]) == string(argon2.IDKey([]byte(pwd), s, 1, 64*1024, 4, 32))
+	cmp := argon2.IDKey([]byte(pwd), s, 1, 64*1024, 4, 32)
+	return subtle.ConstantTimeCompare(h[16:], cmp) == 1
 }
 
-func (s *Service) SignUp(ctx context.Context, email, pwd, password string) (*domain.User, error) {
+func (s *Service) SignUp(ctx context.Context, email, nickname, pwd string) (*domain.User, error) {
 	if _, err := s.repo.ByEmail(ctx, email); err == nil {
 		return nil, ErrExists
 	}
 	u := &domain.User{
 		Email:        email,
+		Nickname:     nickname,
 		PasswordHash: hash(pwd, salt()),
 	}
 	if err := s.repo.Create(ctx, u); err != nil {
