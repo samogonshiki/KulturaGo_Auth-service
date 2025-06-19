@@ -1,11 +1,11 @@
-PROJECT=auth-service
+PROJECT   ?= auth-service
+IMAGE      = kulturago/$(PROJECT)
+LOG_DIR    = ./logs
 
-.PHONY: dev build docker test swag
-
-dev: swag docker-compose-up
+.PHONY: dev stage prod build docker test swag dc-up
 
 swag:
-	swag init -g cmd/auth/main.go -o api/docs
+	go run github.com/swaggo/swag/cmd/swag@latest init -g cmd/auth/main.go -o api/docs
 
 test:
 	go test ./...
@@ -14,7 +14,24 @@ build:
 	go build -v ./cmd/auth
 
 docker:
-	docker build -t kulturago/$(PROJECT):latest .
+	docker build -t $(IMAGE):latest .
 
-docker-compose-up:
+docker-up:
+	docker-compose up -d --build
+
+docker-down:
+	docker-compose down
+
+
+dc-up:
 	docker compose up -d --build
+
+dev: export LOG_LEVEL = debug
+dev: export LOG_FILE  = $(LOG_DIR)/dev.log
+dev: swag dc-up
+
+stage: export LOG_LEVEL = warn
+stage: swag dc-up
+
+prod: export LOG_LEVEL = error
+prod: swag dc-up
