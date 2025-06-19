@@ -4,8 +4,12 @@ services:
     build: .
     env_file: .env
     environment:
+      LOG_LEVEL:  ${LOG_LEVEL:-info}
+      LOG_FILE:   ${LOG_FILE:-}
       JWT_SECRET: "${JWT_SECRET}"
       DATABASE_URL:  "postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/postgres?sslmode=disable"
+    volumes:
+      - ./logs:/app/logs
     depends_on: [postgres, kafka]
     ports:
       - "8080:8080"
