@@ -11,6 +11,16 @@ CREATE TABLE users (
                        created_at    TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
+CREATE TABLE profiles (
+                          user_id   BIGINT PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+                          full_name TEXT    DEFAULT '',
+                          about     TEXT    DEFAULT '',
+                          avatar    TEXT    DEFAULT '',
+                          city      TEXT    DEFAULT '',
+                          phone     TEXT    DEFAULT '',
+                          birthday  DATE
+);
+
 CREATE TABLE refresh_tokens (
                                 token       UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
                                 user_id     BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,

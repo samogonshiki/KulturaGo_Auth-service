@@ -1,6 +1,7 @@
 package tokens
 
 import (
+	"github.com/google/uuid"
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
@@ -22,7 +23,7 @@ type Claims struct {
 type Manager struct {
 	secret            []byte
 	accessTTLSeconds  int64
-	refreshTTLSeconds int64
+	RefreshTTLSeconds int64
 }
 
 func NewManager(secret []byte, accessTTL, refreshTTL int64) *Manager {
@@ -36,7 +37,7 @@ func (m *Manager) Generate(userID int64) (*Tokens, error) {
 	if err != nil {
 		return nil, err
 	}
-	refresh, err := m.signedToken(userID, now.Add(time.Duration(m.refreshTTLSeconds)*time.Second))
+	refresh, err := m.signedToken(userID, now.Add(time.Duration(m.RefreshTTLSeconds)*time.Second))
 	if err != nil {
 		return nil, err
 	}
@@ -45,7 +46,7 @@ func (m *Manager) Generate(userID int64) (*Tokens, error) {
 		AccessToken:      access,
 		ExpiresIn:        m.accessTTLSeconds,
 		RefreshToken:     refresh,
-		RefreshExpiresIn: m.refreshTTLSeconds,
+		RefreshExpiresIn: m.RefreshTTLSeconds,
 		TokenType:        "bearer",
 	}, nil
 }
@@ -60,9 +61,11 @@ func (m *Manager) Parse(tokenStr string) (*Claims, error) {
 }
 
 func (m *Manager) signedToken(userID int64, exp time.Time) (string, error) {
+	jti := uuid.NewString()
 	cls := Claims{
 		UserID: userID,
 		RegisteredClaims: jwt.RegisteredClaims{
+			ID:        jti,
 			IssuedAt:  jwt.NewNumericDate(time.Now()),
 			ExpiresAt: jwt.NewNumericDate(exp),
 		},
