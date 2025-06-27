@@ -50,7 +50,7 @@ services:
       DYNAMIC_CONFIG_ENABLED: 'true'
     depends_on: [kafka]
     volumes:
-       - ./kui-data:/etc/kafka-ui
+      - ./kui-data:/etc/kafka-ui
     networks: [backend]
 
   zookeeper:
@@ -69,8 +69,6 @@ services:
     restart: "no"
     command: >
       bash -c '
-        kafka-topics --create --if-not-exists --topic calc.tasks   --partitions 3 --replication-factor 1 --bootstrap-server kafka:9092;
-        kafka-topics --create --if-not-exists --topic calc.results --partitions 3 --replication-factor 1 --bootstrap-server kafka:9092;
         kafka-topics --create --if-not-exists --topic auth-events  --partitions 3 --replication-factor 1 --bootstrap-server kafka:9092;
       '
     environment:
@@ -89,8 +87,8 @@ services:
       MS_ACCOUNTS_DB: ${MS_ACCOUNTS_DB}
       MS_ACCOUNTS_PASSWORD: ${MS_ACCOUNTS_PASSWORD}
     volumes:
-       - ./postgres-data:/var/lib/postgresql/data
-       - ./docker/create-postgres-databases.sh:/docker-entrypoint-initdb.d/00-init.sh
+      - ./postgres-data:/var/lib/postgresql/data
+      - ./docker/create-postgres-databases.sh:/docker-entrypoint-initdb.d/00-init.sh
     ports:
       - ${PG_PORT}:5432
     healthcheck:
@@ -99,6 +97,23 @@ services:
       timeout: 10s
       retries: 5
     networks: [backend]
+
+  redis:
+    image: redis:${REDIS_VERSION}
+    environment:
+      - REDIS_PASSWORD=redis
+      - REDIS_USER=redis
+      - REDIS_USER_PASSWORD=redis
+    ports:
+      - ${REDIS_PORT}:6379
+    volumes:
+      - ./redis-data:/data
+    healthcheck:
+      test: [ "CMD", "redis-cli", "-a", "$REDIS_PASSWORD", "ping" ]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+    restart: unless-stopped
 
 networks:
   backend:
