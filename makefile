@@ -23,6 +23,12 @@ dc-down:
 dc-up:
 	docker compose up -d --build
 
+migrat:
+	docker exec -i auth-service-postgres-1 psql \
+          -U root \
+          -d postgres \
+          < ./db/migrations/0001_init.up.sql
+
 dev: export LOG_LEVEL = debug
 dev: export LOG_FILE  = $(LOG_DIR)/dev.log
 dev: swag dc-up
