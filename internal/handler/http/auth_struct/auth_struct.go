@@ -27,3 +27,23 @@ type AccessResp struct {
 type LogoutReq struct {
 	Refresh string `json:"refresh_token"`
 }
+
+type ProfileResp struct {
+	UserID   int64  `json:"user_id"`
+	FullName string `json:"full_name"`
+	About    string `json:"about"`
+	Email    string `json:"email"`
+	Avatar   string `json:"avatar"`
+	City     string `json:"city"`
+	Phone    string `json:"phone"`
+	Birthday string `json:"birthday"`
+}
+
+type ProfileReq struct {
+	FullName string `json:"full_name"`
+	About    string `json:"about"`
+	Avatar   string `json:"avatar"`
+	City     string `json:"city"`
+	Phone    string `json:"phone"`
+	Birthday string `json:"birthday"`
+}
