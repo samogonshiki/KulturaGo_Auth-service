@@ -33,6 +33,7 @@ func NewRouter(svc *service.Service, mgr *tokens.Manager) *chi.Mux {
 		r.Get("/api/v1/me", ah.Me)
 		r.Get("/api/v1/profile", ah.Profile)
 		r.Put("/api/v1/profile", ah.SaveProfile)
+		r.Get("/api/v1/avatar/presign", ah.PresignAvatar)
 	})
 
 	return r

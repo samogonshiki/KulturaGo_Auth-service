@@ -167,7 +167,15 @@ func (h *AuthHandler) Me(w http.ResponseWriter, r *http.Request) {
 	_ = json.NewEncoder(w).Encode(map[string]int64{"user_id": uid})
 }
 
-// GET /api/v1/profile
+// @Summary      Получить профиль текущего пользователя
+// @Description  Возвращает все поля профиля (full_name, about, email, avatar, city, phone, birthday) для авторизованного пользователя.
+// @Tags         profile
+// @Security     Bearer
+// @Produce      json
+// @Success      200 {object} st.ProfileResp
+// @Failure      401 {string} string "missing/invalid token"
+// @Failure      500 {string} string "internal server error"
+// @Router       /api/v1/profile [get]
 func (h *AuthHandler) Profile(w http.ResponseWriter, r *http.Request) {
 	uid, _ := middleware.FromCtx(r.Context())
 
@@ -177,28 +185,81 @@ func (h *AuthHandler) Profile(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	resp := service.ToResp(pdb) // ← ProfileResp
+	resp := service.ToResp(pdb)
 	w.Header().Set("Content-Type", "application/json")
 	_ = json.NewEncoder(w).Encode(resp)
 }
 
-// PUT /api/v1/profile
+// @Summary      Обновить профиль текущего пользователя
+// @Description  Частично обновляет поля профиля: full_name, about, avatar, city, phone, birthday.
+// @Tags         profile
+// @Security     Bearer
+// @Accept       json
+// @Produce      json
+// @Param        payload body      st.ProfileReq true "Новые значения полей профиля"
+// @Success      200     {object}  st.ProfileResp
+// @Failure      400     {string}  string "bad json"
+// @Failure      401     {string}  string "missing/invalid token"
+// @Failure      500     {string}  string "internal server error"
+// @Router       /api/v1/profile [put]
 func (h *AuthHandler) SaveProfile(w http.ResponseWriter, r *http.Request) {
 	uid, _ := middleware.FromCtx(r.Context())
 
 	var in st.ProfileReq
-	if json.NewDecoder(r.Body).Decode(&in) != nil {
-		http.Error(w, "bad json", 400)
+	if err := json.NewDecoder(r.Body).Decode(&in); err != nil {
+		http.Error(w, "bad json", http.StatusBadRequest)
 		return
 	}
-	cur, _ := h.svc.Profile(r.Context(), uid)
 
-	pdb := service.ToDB(uid, in, cur.Email)
-	if err := h.svc.SaveProfile(r.Context(), pdb); err != nil {
+	cur, err := h.svc.Profile(r.Context(), uid)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	if in.FullName != "" {
+		cur.FullName = in.FullName
+	}
+	if in.About != "" {
+		cur.About = in.About
+	}
+	if in.Avatar != "" {
+		cur.Avatar = in.Avatar
+	}
+	if in.City != "" {
+		cur.City = in.City
+	}
+	if in.Phone != "" {
+		cur.Phone = in.Phone
+	}
+	if in.Birthday != "" {
+		cur.Birthday = in.Birthday
+	}
+
+	if err := h.svc.SaveProfile(r.Context(), cur); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(service.ToResp(cur))
+}
+
+// @Summary  Ссылка для загрузки аватара
+// @Tags     files
+// @Produce  json
+// @Success  200 {object} avatarPutResp
+// @Router   /api/v1/avatar/presign [get]
+func (h *AuthHandler) PresignAvatar(w http.ResponseWriter, r *http.Request) {
+	uid, _ := middleware.FromCtx(r.Context())
+
+	putURL, publicURL, err := h.svc.GetAvatarPutURL(r.Context(), uid)
+	if err != nil {
 		http.Error(w, err.Error(), 500)
 		return
 	}
-
-	updated, _ := h.svc.Profile(r.Context(), uid)
-	_ = json.NewEncoder(w).Encode(service.ToResp(updated))
+	_ = json.NewEncoder(w).Encode(map[string]string{
+		"put_url":    putURL,
+		"public_url": publicURL,
+	})
 }

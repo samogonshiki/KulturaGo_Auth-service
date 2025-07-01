@@ -47,3 +47,8 @@ type ProfileReq struct {
 	Phone    string `json:"phone"`
 	Birthday string `json:"birthday"`
 }
+
+type AvatarPutResp struct {
+	PutURL    string `json:"put_url"`
+	PublicURL string `json:"public_url"`
+}

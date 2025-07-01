@@ -5,6 +5,8 @@ import (
 	"crypto/rand"
 	"crypto/subtle"
 	"errors"
+	"kulturago/auth-service/internal/storage"
+	"log"
 	"time"
 
 	"kulturago/auth-service/internal/domain"
@@ -23,6 +25,7 @@ type Service struct {
 	kafka   *kafka.Producer
 	mgr     *tokens.Manager
 	rtStore *redis.RefreshStore
+	store   *storage.S3
 }
 
 var (
@@ -30,9 +33,9 @@ var (
 	ErrInvalidCreds = errors.New("invalid credentials")
 )
 
-func New(repo *repository.PG, prod *kafka.Producer, mgr *tokens.Manager,
-	rt *redis.RefreshStore) *Service {
-	return &Service{repo, prod, mgr, rt}
+func New(repo *repository.PG, prod *kafka.Producer, mgr *tokens.Manager, rt *redis.RefreshStore, st *storage.S3,
+) *Service {
+	return &Service{repo, prod, mgr, rt, st}
 }
 
 func salt() []byte { b := make([]byte, 16); _, _ = rand.Read(b); return b }
@@ -123,7 +126,12 @@ func (s *Service) AccessAllowed(ctx context.Context, jti string) bool {
 }
 
 func (s *Service) Profile(ctx context.Context, uid int64) (rp.ProfileDB, error) {
-	return s.repo.GetProfileFull(ctx, uid)
+	pr, err := s.repo.GetProfileFull(ctx, uid)
+	if err == repository.ErrNotFound {
+		_ = s.repo.CreateBlankProfile(ctx, uid)
+		pr, err = s.repo.GetProfileFull(ctx, uid)
+	}
+	return pr, err
 }
 
 func (s *Service) SaveProfile(ctx context.Context, p rp.ProfileDB) error {
@@ -148,4 +156,16 @@ func (s *Service) Refresh(ctx context.Context, oldRefresh string) (string, strin
 	_ = s.RevokeRefresh(ctx, oldRefresh)
 
 	return tks.AccessToken, tks.RefreshToken, nil
+}
+
+func (s *Service) GetAvatarPutURL(ctx context.Context, uid int64) (string, string, error) {
+	prof, err := s.repo.GetProfileFull(ctx, uid)
+	if err != nil {
+		return "", "", err
+	}
+
+	put, key, _ := s.store.PresignAvatarPut(ctx, uid, prof.Email)
+	log.Printf("PUT -> %s\n PUBLIC -> %s", put, s.store.PublicURL(key))
+
+	return put, s.store.PublicURL(key), nil
 }
