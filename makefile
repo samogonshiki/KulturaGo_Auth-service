@@ -17,13 +17,14 @@ docker:
 	docker build -t $(IMAGE):latest .
 
 dc-down:
-	docker-compose down
+	docker-compose down --volumes --remove-orphans
+	rm -rf kafka-data
 
 
 dc-up:
 	docker compose up -d --build
 
-migrat:
+mig:
 	docker exec -i auth-service-postgres-1 psql \
           -U root \
           -d postgres \
