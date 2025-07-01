@@ -21,12 +21,12 @@ func ToResp(p repo.ProfileDB) st.ProfileResp {
 func ToDB(uid int64, in st.ProfileReq, email string) repo.ProfileDB {
 	return repo.ProfileDB{
 		UserID:   uid,
+		Email:    email,
 		FullName: in.FullName,
 		About:    in.About,
 		Avatar:   in.Avatar,
 		City:     in.City,
 		Phone:    in.Phone,
 		Birthday: in.Birthday,
-		Email:    email,
 	}
 }
