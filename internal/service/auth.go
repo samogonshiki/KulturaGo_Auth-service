@@ -2,93 +2,43 @@ package service
 
 import (
 	"context"
-	"crypto/rand"
-	"crypto/subtle"
-	"errors"
-	"kulturago/auth-service/internal/storage"
-	"log"
-	"time"
-
+	Cerr "kulturago/auth-service/internal/custom_err"
 	"kulturago/auth-service/internal/domain"
-	"kulturago/auth-service/internal/kafka"
-	"kulturago/auth-service/internal/redis"
 	"kulturago/auth-service/internal/repository"
-	rp "kulturago/auth-service/internal/repository/repo_struct"
-	"kulturago/auth-service/internal/tokens"
 
 	"github.com/google/uuid"
-	"golang.org/x/crypto/argon2"
 )
 
-type Service struct {
-	repo    *repository.PG
-	kafka   *kafka.Producer
-	mgr     *tokens.Manager
-	rtStore *redis.RefreshStore
-	store   *storage.S3
-}
-
-var (
-	ErrExists       = errors.New("user exists")
-	ErrInvalidCreds = errors.New("invalid credentials")
-)
-
-func New(repo *repository.PG, prod *kafka.Producer, mgr *tokens.Manager, rt *redis.RefreshStore, st *storage.S3,
-) *Service {
-	return &Service{repo, prod, mgr, rt, st}
-}
-
-func salt() []byte { b := make([]byte, 16); _, _ = rand.Read(b); return b }
-
-func hash(pwd string, s []byte) []byte {
-	return append(s, argon2.IDKey([]byte(pwd), s, 1, 64*1024, 4, 32)...)
-}
-func verify(pwd string, h []byte) bool {
-	s := h[:16]
-	cmp := argon2.IDKey([]byte(pwd), s, 1, 64*1024, 4, 32)
-	return subtle.ConstantTimeCompare(h[16:], cmp) == 1
-}
-
-func (s *Service) SignUp(ctx context.Context, email, nickname, pwd string) (*domain.User, error) {
+func (s *Service) SignUp(ctx context.Context, email, nick, pwd string) (*domain.User, error) {
 	if _, err := s.repo.ByEmail(ctx, email); err == nil {
-		return nil, ErrExists
+		return nil, Cerr.ErrExists
 	}
-	u := &domain.User{
-		Email:        email,
-		Nickname:     nickname,
-		PasswordHash: hash(pwd, salt()),
-	}
+	u := &domain.User{Email: email, Nickname: nick, PasswordHash: hash(pwd, salt())}
 	if err := s.repo.Create(ctx, u); err != nil {
 		return nil, err
 	}
-	s.kafka.SendRaw("user.created", "", []byte(`{"id":"`+uuid.NewString()+`"}`))
 	_ = s.repo.CreateBlankProfile(ctx, u.ID)
+	s.kafka.SendRaw("user.created", "", []byte(`{"id":"`+uuid.NewString()+`"}`))
 	return u, nil
 }
 
 func (s *Service) SignIn(ctx context.Context, email, pwd string) (string, string, error) {
 	u, err := s.repo.ByEmail(ctx, email)
 	if err != nil || !verify(pwd, u.PasswordHash) {
-		return "", "", ErrInvalidCreds
+		return "", "", Cerr.ErrInvalidCreds
 	}
 	tks, err := s.mgr.Generate(u.ID)
 	if err != nil {
 		return "", "", err
 	}
-
-	s.SaveRefresh(ctx, tks.RefreshToken, s.mgr.RefreshTTLSeconds)
-
+	s.saveRefresh(ctx, tks.RefreshToken)
 	return tks.AccessToken, tks.RefreshToken, nil
 }
 
-func (s *Service) SocialLogin(ctx context.Context, provider, pid, email string) (string, string, error) {
-	u, err := s.repo.ByProvider(ctx, provider, pid)
+func (s *Service) SocialLogin(ctx context.Context, prov, pid, email string) (string, string, error) {
+	u, err := s.repo.ByProvider(ctx, prov, pid)
 	if err == repository.ErrNotFound {
-		u = &domain.User{
-			Email:      email,
-			Provider:   provider,
-			ProviderID: pid,
-		}
+		u = &domain.User{Email: email, Provider: prov, ProviderID: pid}
 		if err = s.repo.Create(ctx, u); err != nil {
 			return "", "", err
 		}
@@ -97,75 +47,6 @@ func (s *Service) SocialLogin(ctx context.Context, provider, pid, email string) 
 	if err != nil {
 		return "", "", err
 	}
-
-	s.SaveRefresh(ctx, tks.RefreshToken, s.mgr.RefreshTTLSeconds)
-
+	s.saveRefresh(ctx, tks.RefreshToken)
 	return tks.AccessToken, tks.RefreshToken, nil
-}
-
-func (s *Service) SaveRefresh(ctx context.Context, token string, secs int64) {
-	_ = s.rtStore.Save(ctx, token, time.Duration(secs)*time.Second)
-}
-
-func (s *Service) RefreshActive(ctx context.Context, token string) bool {
-	ok, _ := s.rtStore.IsActive(ctx, token)
-	return ok
-}
-
-func (s *Service) RevokeRefresh(ctx context.Context, token string) error {
-	return s.rtStore.Revoke(ctx, token)
-}
-
-func (s *Service) RevokeAccess(ctx context.Context, jti string, secs int64) {
-	_ = s.rtStore.BlacklistAccess(ctx, jti, time.Duration(secs)*time.Second)
-}
-
-func (s *Service) AccessAllowed(ctx context.Context, jti string) bool {
-	ok, _ := s.rtStore.IsAccessAllowed(ctx, jti)
-	return ok
-}
-
-func (s *Service) Profile(ctx context.Context, uid int64) (rp.ProfileDB, error) {
-	pr, err := s.repo.GetProfileFull(ctx, uid)
-	if err == repository.ErrNotFound {
-		_ = s.repo.CreateBlankProfile(ctx, uid)
-		pr, err = s.repo.GetProfileFull(ctx, uid)
-	}
-	return pr, err
-}
-
-func (s *Service) SaveProfile(ctx context.Context, p rp.ProfileDB) error {
-	return s.repo.UpdateProfile(ctx, p)
-}
-
-func (s *Service) Refresh(ctx context.Context, oldRefresh string) (string, string, error) {
-	if !s.RefreshActive(ctx, oldRefresh) {
-		return "", "", errors.New("refresh expired")
-	}
-	cls, err := s.mgr.Parse(oldRefresh)
-	if err != nil {
-		return "", "", err
-	}
-
-	tks, err := s.mgr.Generate(cls.UserID)
-	if err != nil {
-		return "", "", err
-	}
-
-	s.SaveRefresh(ctx, tks.RefreshToken, s.mgr.RefreshTTLSeconds)
-	_ = s.RevokeRefresh(ctx, oldRefresh)
-
-	return tks.AccessToken, tks.RefreshToken, nil
-}
-
-func (s *Service) GetAvatarPutURL(ctx context.Context, uid int64) (string, string, error) {
-	prof, err := s.repo.GetProfileFull(ctx, uid)
-	if err != nil {
-		return "", "", err
-	}
-
-	put, key, _ := s.store.PresignAvatarPut(ctx, uid, prof.Email)
-	log.Printf("PUT -> %s\n PUBLIC -> %s", put, s.store.PublicURL(key))
-
-	return put, s.store.PublicURL(key), nil
 }
