@@ -10,7 +10,7 @@ import (
 	"kulturago/auth-service/internal/tokens"
 )
 
-func SlidingRefresh(svc *service.Service, mgr *tokens.Manager, threshold time.Duration, ) func(http.Handler) http.Handler {
+func SlidingRefresh(svc *service.Service, mgr *tokens.Manager, threshold time.Duration) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			accC, errAcc := r.Cookie("access_token")
