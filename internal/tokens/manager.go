@@ -2,6 +2,7 @@ package tokens
 
 import (
 	"github.com/google/uuid"
+	"log"
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
@@ -23,7 +24,7 @@ type Claims struct {
 type Manager struct {
 	secret            []byte
 	accessTTLSeconds  int64
-	RefreshTTLSeconds int64
+	refreshTTLSeconds int64
 }
 
 func NewManager(secret []byte, accessTTL, refreshTTL int64) *Manager {
@@ -37,16 +38,20 @@ func (m *Manager) Generate(userID int64) (*Tokens, error) {
 	if err != nil {
 		return nil, err
 	}
-	refresh, err := m.signedToken(userID, now.Add(time.Duration(m.RefreshTTLSeconds)*time.Second))
+	refresh, err := m.signedToken(userID, now.Add(
+		time.Duration(m.refreshTTLSeconds)*time.Second))
 	if err != nil {
 		return nil, err
 	}
+
+	exp := now.Add(time.Duration(m.refreshTTLSeconds) * time.Second)
+	log.Printf("New acces exp=%s (ttl=%d)", exp.Format(time.RFC3339), m.accessTTLSeconds)
 
 	return &Tokens{
 		AccessToken:      access,
 		ExpiresIn:        m.accessTTLSeconds,
 		RefreshToken:     refresh,
-		RefreshExpiresIn: m.RefreshTTLSeconds,
+		RefreshExpiresIn: m.refreshTTLSeconds,
 		TokenType:        "bearer",
 	}, nil
 }
@@ -73,3 +78,6 @@ func (m *Manager) signedToken(userID int64, exp time.Time) (string, error) {
 	tkn := jwt.NewWithClaims(jwt.SigningMethodHS256, cls)
 	return tkn.SignedString(m.secret)
 }
+
+func (m *Manager) AccessTTLSeconds() int64  { return m.accessTTLSeconds }
+func (m *Manager) RefreshTTLSeconds() int64 { return m.refreshTTLSeconds }
