@@ -3,9 +3,9 @@ package service
 import (
 	"context"
 	"github.com/google/uuid"
+	"kulturago/auth-service/internal/custom_err"
 	"kulturago/auth-service/internal/domain"
 	"kulturago/auth-service/internal/repository"
-	"kulturago/auth-service/internal/custom_err"
 )
 
 func (s *Service) SignUp(ctx context.Context, email, nick, pwd string) (*domain.User, error) {
