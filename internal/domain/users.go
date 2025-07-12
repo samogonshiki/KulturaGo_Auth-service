@@ -10,4 +10,8 @@ type User struct {
 	Provider     string
 	ProviderID   string
 	CreatedAt    time.Time
+
+	TwoFAEnabled    bool
+	LoginAlerts     bool
+	AllowNewDevices bool
 }
