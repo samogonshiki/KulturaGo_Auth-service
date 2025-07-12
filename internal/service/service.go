@@ -12,12 +12,17 @@ import (
 )
 
 type Repository interface {
+	ByID(ctx context.Context, id int64) (*domain.User, error)
 	ByEmail(ctx context.Context, email string) (*domain.User, error)
 	ByProvider(ctx context.Context, prov, pid string) (*domain.User, error)
 	Create(ctx context.Context, u *domain.User) error
-	CreateBlankProfile(ctx context.Context, uid int64) error
+	UpdatePassword(ctx context.Context, uid int64, hash []byte) error
+
+	UpdateSecurityFlag(ctx context.Context, uid int64, key string, en bool) error
+
 	GetProfileFull(ctx context.Context, uid int64) (rp.ProfileDB, error)
 	UpdateProfile(ctx context.Context, p rp.ProfileDB) error
+	CreateBlankProfile(ctx context.Context, uid int64) error
 }
 
 type Service struct {
