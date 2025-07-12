@@ -2,14 +2,13 @@ package http
 
 import (
 	"encoding/json"
-	"net/http"
-	"strings"
-	"time"
-
 	st "kulturago/auth-service/internal/handler/http/auth_struct"
 	"kulturago/auth-service/internal/middleware"
 	"kulturago/auth-service/internal/service"
 	"kulturago/auth-service/internal/tokens"
+	utl "kulturago/auth-service/internal/util"
+	"net/http"
+	"strings"
 )
 
 type AuthHandler struct {
@@ -19,27 +18,6 @@ type AuthHandler struct {
 
 func NewAuthHandler(s *service.Service, m *tokens.Manager) *AuthHandler {
 	return &AuthHandler{s, m}
-}
-
-func setCookie(w http.ResponseWriter, name, val string, maxAge int, path string) {
-	http.SetCookie(w, &http.Cookie{
-		Name:     name,
-		Value:    val,
-		Path:     path,
-		MaxAge:   maxAge,
-		HttpOnly: true,
-		SameSite: http.SameSiteLaxMode,
-		Secure:   false,
-	})
-}
-
-func clearCookie(w http.ResponseWriter, name string) {
-	http.SetCookie(w, &http.Cookie{
-		Name:   name,
-		Value:  "",
-		Path:   "/",
-		MaxAge: -1,
-	})
 }
 
 // @Summary      Регистрация
@@ -86,8 +64,13 @@ func (h *AuthHandler) SignIn(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	setCookie(w, "access_token", acc, int((15 * time.Minute).Seconds()), "/")
-	setCookie(w, "refresh_token", ref, int((30 * 24 * time.Hour).Seconds()), "/api/v1/auth")
+	accessTTL := int(h.mgr.AccessTTLSeconds())
+	refreshTTL := int(h.mgr.RefreshTTLSeconds())
+
+	utl.Set(w, "access_token", acc, accessTTL, "/")
+	utl.Set(w, "refresh_token", ref, refreshTTL, "/")
+
+	utl.ClearPath(w, "refresh_token", "/api/v1/auth")
 
 	w.WriteHeader(http.StatusNoContent)
 }
@@ -113,8 +96,13 @@ func (h *AuthHandler) Refresh(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	setCookie(w, "access_token", acc, int((15 * time.Minute).Seconds()), "/")
-	setCookie(w, "refresh_token", ref, int((30 * 24 * time.Hour).Seconds()), "/api/v1/auth")
+	accessTTL := int(h.mgr.AccessTTLSeconds())
+	refreshTTL := int(h.mgr.RefreshTTLSeconds())
+
+	utl.Set(w, "access_token", acc, accessTTL, "/")
+	utl.Set(w, "refresh_token", ref, refreshTTL, "/")
+
+	utl.ClearPath(w, "refresh_token", "/api/v1/auth")
 
 	w.WriteHeader(http.StatusNoContent)
 }
@@ -151,8 +139,9 @@ func (h *AuthHandler) Access(w http.ResponseWriter, r *http.Request) {
 // @Success      204  "no content"
 // @Router       /api/v1/auth/logout [post]
 func (h *AuthHandler) Logout(w http.ResponseWriter, r *http.Request) {
-	clearCookie(w, "access_token")
-	clearCookie(w, "refresh_token")
+	utl.Clear(w, "access_token")
+	utl.Clear(w, "refresh_token")
+	utl.ClearPath(w, "refresh_token", "/api/v1/auth")
 	w.WriteHeader(http.StatusNoContent)
 }
 
@@ -167,15 +156,6 @@ func (h *AuthHandler) Me(w http.ResponseWriter, r *http.Request) {
 	_ = json.NewEncoder(w).Encode(map[string]int64{"user_id": uid})
 }
 
-// @Summary      Получить профиль текущего пользователя
-// @Description  Возвращает все поля профиля (full_name, about, email, avatar, city, phone, birthday) для авторизованного пользователя.
-// @Tags         profile
-// @Security     Bearer
-// @Produce      json
-// @Success      200 {object} st.ProfileResp
-// @Failure      401 {string} string "missing/invalid token"
-// @Failure      500 {string} string "internal server error"
-// @Router       /api/v1/profile [get]
 func (h *AuthHandler) Profile(w http.ResponseWriter, r *http.Request) {
 	uid, _ := middleware.FromCtx(r.Context())
 
@@ -190,18 +170,6 @@ func (h *AuthHandler) Profile(w http.ResponseWriter, r *http.Request) {
 	_ = json.NewEncoder(w).Encode(resp)
 }
 
-// @Summary      Обновить профиль текущего пользователя
-// @Description  Частично обновляет поля профиля: full_name, about, avatar, city, phone, birthday.
-// @Tags         profile
-// @Security     Bearer
-// @Accept       json
-// @Produce      json
-// @Param        payload body      st.ProfileReq true "Новые значения полей профиля"
-// @Success      200     {object}  st.ProfileResp
-// @Failure      400     {string}  string "bad json"
-// @Failure      401     {string}  string "missing/invalid token"
-// @Failure      500     {string}  string "internal server error"
-// @Router       /api/v1/profile [put]
 func (h *AuthHandler) SaveProfile(w http.ResponseWriter, r *http.Request) {
 	uid, _ := middleware.FromCtx(r.Context())
 

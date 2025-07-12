@@ -83,3 +83,25 @@ func (p *PG) ByProvider(ctx context.Context, provider, pid string) (*domain.User
 	}
 	return &u, nil
 }
+
+func (p *PG) ByID(ctx context.Context, uid int64) (*domain.User, error) {
+	var u domain.User
+	err := p.db.QueryRow(ctx, `
+		SELECT id, email, nickname, password_hash,
+		       provider, provider_id, created_at,
+		       two_fa_enabled, login_alerts, allow_new_devices
+		  FROM users WHERE id=$1`, uid).
+		Scan(&u.ID, &u.Email, &u.Nickname, &u.PasswordHash,
+			&u.Provider, &u.ProviderID, &u.CreatedAt,
+			&u.TwoFAEnabled, &u.LoginAlerts, &u.AllowNewDevices)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil, ErrNotFound
+	}
+	return &u, err
+}
+
+func (p *PG) UpdatePassword(ctx context.Context, uid int64, h []byte) error {
+	_, err := p.db.Exec(ctx,
+		`UPDATE users SET password_hash=$2 WHERE id=$1`, uid, h)
+	return err
+}

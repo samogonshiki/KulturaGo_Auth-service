@@ -37,6 +37,10 @@ type ProfileResp struct {
 	City     string `json:"city"`
 	Phone    string `json:"phone"`
 	Birthday string `json:"birthday"`
+
+	TwoFAEnabled    bool `json:"two_fa_enabled"`
+	LoginAlerts     bool `json:"login_alerts"`
+	AllowNewDevices bool `json:"allow_new_devices"`
 }
 
 type ProfileReq struct {
@@ -46,6 +50,10 @@ type ProfileReq struct {
 	City     string `json:"city"`
 	Phone    string `json:"phone"`
 	Birthday string `json:"birthday"`
+
+	TwoFAEnabled    bool `json:"two_fa_enabled"`
+	LoginAlerts     bool `json:"login_alerts"`
+	AllowNewDevices bool `json:"allow_new_devices"`
 }
 
 type AvatarPutResp struct {

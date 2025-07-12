@@ -20,6 +20,7 @@ import (
 	"kulturago/auth-service/internal/service"
 	"kulturago/auth-service/internal/storage"
 	"kulturago/auth-service/internal/tokens"
+	"kulturago/auth-service/internal/util"
 )
 
 func main() {
@@ -69,7 +70,10 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	tokenMgr := tokens.NewManager(secret, 15*60, 30*24*60*60)
+
+	accessTTL := util.EnvInt("ACCESS_TTL_SECONDS", 60*60)
+	refreshTTL := util.EnvInt("REFRESH_TTL_SECONDS", 30*24*60*60)
+	tokenMgr := tokens.NewManager(secret, accessTTL, refreshTTL)
 	authSvc := service.New(pg, kprod, tokenMgr, rtStore, store)
 
 	r := chi.NewRouter()
