@@ -2,16 +2,15 @@ package service
 
 import (
 	"context"
-	Cerr "kulturago/auth-service/internal/custom_err"
+	"github.com/google/uuid"
 	"kulturago/auth-service/internal/domain"
 	"kulturago/auth-service/internal/repository"
-
-	"github.com/google/uuid"
+	"kulturago/auth-service/internal/custom_err"
 )
 
 func (s *Service) SignUp(ctx context.Context, email, nick, pwd string) (*domain.User, error) {
 	if _, err := s.repo.ByEmail(ctx, email); err == nil {
-		return nil, Cerr.ErrExists
+		return nil, custom_err.ErrExists
 	}
 	u := &domain.User{Email: email, Nickname: nick, PasswordHash: hash(pwd, salt())}
 	if err := s.repo.Create(ctx, u); err != nil {
@@ -25,7 +24,7 @@ func (s *Service) SignUp(ctx context.Context, email, nick, pwd string) (*domain.
 func (s *Service) SignIn(ctx context.Context, email, pwd string) (string, string, error) {
 	u, err := s.repo.ByEmail(ctx, email)
 	if err != nil || !verify(pwd, u.PasswordHash) {
-		return "", "", Cerr.ErrInvalidCreds
+		return "", "", custom_err.ErrInvalidCreds
 	}
 	tks, err := s.mgr.Generate(u.ID)
 	if err != nil {
