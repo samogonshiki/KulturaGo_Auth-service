@@ -1,50 +1,6 @@
-#KulturaGo BackEnd
+# Auth-service
 
-
-
-## Структура проекта
-
-
-```
-KulturaGo_Auth-service/
-├── .env.example
-├── Makefile
-├── Dockerfile
-├── docker-compose.yml
-├── db/
-│   ├── migrations/
-│   │   ├── 0001_init.up.sql
-│   │   └── 0001_init.down.sql
-│   └── goose.conf
-├── api/
-│   └── docs/             
-├── cmd/
-│   └── auth/
-│       └── main.go
-├── internal/
-│   ├── domain/
-│   │   └── user.go
-│   ├── repository/
-│   │   └── pg.go
-│   ├── service/
-│   │   └── auth.go
-│   ├── tokens/
-│   │   └── manager.go
-│   ├── kafka/
-│   │   └── producer.go
-│   ├── middleware/
-│   │   └── jwt.go
-│   └── handler/
-│       ├── http/         # SignUp / SignIn / OAuth
-│       │   ├── auth.go
-│       │   ├── oauth.go
-│       │   └── init.go
-│       └── routes/
-│           └── router.go
-├── go.mod
-└── README.md
-```
-
+![intro](src/auth-klg-intro.png)
 
 ### Архитектура
 
@@ -59,22 +15,23 @@ graph TD
   Auth -->|Redis black-list| Redis
 ```
 
-### REST‑API
+> [!NOTE]
+>### REST‑API
+>
+> | HTTP  | Путь                           | Описание                                        | Токен      |
+> |-------|--------------------------------|-------------------------------------------------|------------|
+> | POST  | /api/v1/auth/signup            | Регистрация нового пользователя                 | —          |
+> | POST  | /api/v1/auth/signin            | Логин, выдача access + refresh                  | —          |
+> | POST  | /api/v1/auth/refresh           | Обновление access-токена по refresh             | refresh    |
+> | POST  | /api/v1/auth/logout            | Инвалидация пары токенов                        | access     |
+> | GET   | /api/v1/me                     | Короткая карточка «Я»                           | access     |
+> | GET   | /api/v1/profile                | Полный профиль                                  | access     |
+> | PUT   | /api/v1/profile                | Сохранение профиля                              | access     |
+> | GET   | /api/v1/avatar/presign         | Presigned-URL для загрузки аватара в S3         | access     |
 
 
 
-| HTTP Method | Endpoint                             | Description                            |
-| ----------- | ------------------------------------ | -------------------------------------- |
-| POST        | `/api/v1/auth/signup`               | регистрация по e-mail/паролю           |
-| POST        | `/api/v1/auth/signin`               | логин, JSON → access_token             |
-| GET         | `/api/v1/auth/oauth/vk/login`       | OAuth redirect                         |
-| GET         | `/api/v1/auth/oauth/vk/callback`    | JWT ↔ refresh                          |
-| GET         | `/api/v1/me` (requires JWT)         | профиль (демо)                         |
-
-
-
-### Поток «Social Login»
-
+### Вход через Yandex ID, VK ID, APPLE ID
 
 ```mermaid
 sequenceDiagram
