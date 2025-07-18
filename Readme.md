@@ -70,14 +70,35 @@ make dev
 open http://localhost:8080/swagger/index.html
 ```
 
-### migrations
+> [!IMPORTANT]
+>### Запуск
+> 
+> **Docker-compose**
+> 
+> ```shell
+> make dc-up
+> ```
+> данная команда поднимает докер-контейнер
+> 
+> ```shell
+> make dc-down
+> ```
+> данная команда удаляет докер-контейнер и удаляет кэш от кафки
+> 
+> **Миграция**
+> 
+>  ```shell
+> make migrat
+> ```
+> 
+> данная команда запускает скрипт миграции init.sql схем
+> 
+> **Swagger**
+> 
+> ```shell
+> make swag
+> ```
+> запускает генерацию api/docs для данного сервиса 
 
-```shell
-docker exec -i kulturago_auth-service-postgres-1 psql \
-      -U root \
-      -d postgres \
-      < ./db/migrations/0001_init.up.sql
-```
-
-## Redactor:
-- **Finnik**
+## Redactor & programmer:
+- **Finnik** 
