@@ -62,16 +62,14 @@ docker network inspect backend >/dev/null 2>&1 || \
 make dev
 ```
 
-```
-git clone https://…/KulturaGo_Auth-service.git
-cd KulturaGo_Auth-service
-cp .env.example .env                    
-make dev                                 
-open http://localhost:8080/swagger/index.html
-```
-
 > [!IMPORTANT]
 >### Запуск
+> 
+> **Git clone**
+> 
+> ```shell
+> git clone https://github.com/samogonshiki/KulturaGo_Auth-service.git
+> ```
 > 
 > **Docker-compose**
 > 
