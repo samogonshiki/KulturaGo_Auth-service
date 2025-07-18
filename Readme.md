@@ -52,16 +52,6 @@ sequenceDiagram
   AS-->>Kafka: user.signed_in
 ```
 
-
-### Подключение к `KulturaGo_infostructure`
-
-```bash
-docker network inspect backend >/dev/null 2>&1 || \
-  docker compose -f ../KulturaGo_infostructure/docker-compose.yml up -d
-
-make dev
-```
-
 > [!IMPORTANT]
 >### Запуск
 > 
@@ -97,6 +87,15 @@ make dev
 > make swag
 > ```
 > запускает генерацию api/docs для данного сервиса 
+> 
+> **Подключение к KulturaGo_infostructure**
+> 
+> ```bash
+>docker network inspect backend >/dev/null 2>&1 || \
+>docker compose -f ../KulturaGo_infostructure/docker-compose.yml up -d
+>
+>make dev
+>```
 
 ## Redactor & programmer:
 - **Finnik** 
