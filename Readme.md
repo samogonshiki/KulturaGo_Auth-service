@@ -97,5 +97,5 @@ sequenceDiagram
 >make dev
 >```
 
-## Redactor & programmer:
+## Editor & programmer:
 - **Finnik** 
