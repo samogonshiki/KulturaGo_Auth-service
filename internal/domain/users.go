@@ -15,3 +15,10 @@ type User struct {
 	LoginAlerts     bool
 	AllowNewDevices bool
 }
+
+type Admin struct {
+	ID           int64
+	Username     string
+	PasswordHash []byte
+	Role         string
+}
