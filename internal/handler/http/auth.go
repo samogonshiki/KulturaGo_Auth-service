@@ -2,6 +2,8 @@ package http
 
 import (
 	"encoding/json"
+	"errors"
+	"kulturago/auth-service/internal/custom_err"
 	st "kulturago/auth-service/internal/handler/http/auth_struct"
 	"kulturago/auth-service/internal/middleware"
 	"kulturago/auth-service/internal/service"
@@ -60,7 +62,11 @@ func (h *AuthHandler) SignIn(w http.ResponseWriter, r *http.Request) {
 
 	acc, ref, err := h.svc.SignIn(r.Context(), in.Email, in.Password)
 	if err != nil {
-		http.Error(w, err.Error(), 401)
+		if errors.Is(err, custom_err.ErrNotAdmin) {
+			http.Error(w, "forbidden", http.StatusForbidden)
+			return
+		}
+		http.Error(w, err.Error(), http.StatusUnauthorized)
 		return
 	}
 
@@ -152,26 +158,40 @@ func (h *AuthHandler) Logout(w http.ResponseWriter, r *http.Request) {
 // @Success      200 {object} map[string]int64
 // @Router       /api/v1/me [get]
 func (h *AuthHandler) Me(w http.ResponseWriter, r *http.Request) {
-	uid, _ := middleware.FromCtx(r.Context())
-	_ = json.NewEncoder(w).Encode(map[string]int64{"user_id": uid})
+	cls, ok := middleware.FromCtx(r.Context())
+	if !ok {
+		http.Error(w, "no claims", http.StatusUnauthorized)
+		return
+	}
+
+	_ = json.NewEncoder(w).Encode(map[string]int64{
+		"user_id": cls.UserID,
+	})
 }
 
 func (h *AuthHandler) Profile(w http.ResponseWriter, r *http.Request) {
-	uid, _ := middleware.FromCtx(r.Context())
+	cls, ok := middleware.FromCtx(r.Context())
+	if !ok {
+		http.Error(w, "no claims", http.StatusUnauthorized)
+		return
+	}
 
-	pdb, err := h.svc.Profile(r.Context(), uid)
+	pdb, err := h.svc.Profile(r.Context(), cls.UserID)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
-	resp := service.ToResp(pdb)
 	w.Header().Set("Content-Type", "application/json")
-	_ = json.NewEncoder(w).Encode(resp)
+	_ = json.NewEncoder(w).Encode(service.ToResp(pdb))
 }
 
 func (h *AuthHandler) SaveProfile(w http.ResponseWriter, r *http.Request) {
-	uid, _ := middleware.FromCtx(r.Context())
+	cls, ok := middleware.FromCtx(r.Context())
+	if !ok {
+		http.Error(w, "no claims", http.StatusUnauthorized)
+		return
+	}
 
 	var in st.ProfileReq
 	if err := json.NewDecoder(r.Body).Decode(&in); err != nil {
@@ -179,7 +199,7 @@ func (h *AuthHandler) SaveProfile(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	cur, err := h.svc.Profile(r.Context(), uid)
+	cur, err := h.svc.Profile(r.Context(), cls.UserID)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -219,15 +239,60 @@ func (h *AuthHandler) SaveProfile(w http.ResponseWriter, r *http.Request) {
 // @Success  200 {object} avatarPutResp
 // @Router   /api/v1/avatar/presign [get]
 func (h *AuthHandler) PresignAvatar(w http.ResponseWriter, r *http.Request) {
-	uid, _ := middleware.FromCtx(r.Context())
-
-	putURL, publicURL, err := h.svc.GetAvatarPutURL(r.Context(), uid)
-	if err != nil {
-		http.Error(w, err.Error(), 500)
+	cls, ok := middleware.FromCtx(r.Context())
+	if !ok {
+		http.Error(w, "no claims", http.StatusUnauthorized)
 		return
 	}
+
+	putURL, publicURL, err := h.svc.GetAvatarPutURL(r.Context(), cls.UserID)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
 	_ = json.NewEncoder(w).Encode(map[string]string{
 		"put_url":    putURL,
 		"public_url": publicURL,
 	})
+}
+
+// @Summary      Обновить только avatar в профиле
+// @Tags         profile
+// @Accept       json
+// @Produce      json
+// @Param        payload body      avatarReq  true  "URL картинки"
+// @Success      204
+// @Failure      400  {string}  string "bad json"
+// @Failure      500  {string}  string "internal error"
+// @Router       /api/v1/profile/avatar [patch]
+func (h *AuthHandler) UpdateAvatar(w http.ResponseWriter, r *http.Request) {
+	cls, ok := middleware.FromCtx(r.Context())
+	if !ok {
+		http.Error(w, "no claims", http.StatusUnauthorized)
+		return
+	}
+
+	var in struct{ Avatar string }
+	if err := json.NewDecoder(r.Body).Decode(&in); err != nil {
+		http.Error(w, "bad json", http.StatusBadRequest)
+		return
+	}
+	if in.Avatar == "" {
+		http.Error(w, "avatar URL is required", http.StatusBadRequest)
+		return
+	}
+
+	cur, err := h.svc.Profile(r.Context(), cls.UserID)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	cur.Avatar = in.Avatar
+
+	if err := h.svc.SaveProfile(r.Context(), cur); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
 }
